@@ -1,0 +1,123 @@
+[mysqld]
+user = mysql
+port = 3306
+datadir = /var/lib/mysql
+tmpdir = /var/tmp
+pid_file = /var/run/mysqld/mysqld.pid
+socket = /var/lib/mysql/mysql.sock
+# bind_address = 127.0.0.1
+local-infile=0
+
+default_time_zone = system    # 'Asia/Singapore' or '+08:00'
+# log_timestamps = SYSTEM  # MySQL 5.7 or newer
+explicit_defaults_for_timestamp = 1
+skip_name_resolve = 1
+symbolic_links = 0
+character_set_server = utf8
+collation_server = utf8_general_ci
+sql_mode=ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+
+# Event Scheduler vis show processlist
+event_scheduler= 1
+
+# the number of files that the operating system permits mysqld to open. 10 + max_connections + (table_open_cache * 2)
+open_files_limit = 6000
+table_open_cache = 2000
+table_open_cache_instances = 16
+max_connections = 500    # values < 1000 are typically good
+max_user_connections = 300    # limit one specific user/application
+interactive_timeout = 600
+wait_timeout = 300
+thread_cache_size = 500    # Up to max_connections makes sense
+tmp_table_size = 64M
+
+# Query
+query_cache_type = 1
+query_cache_size = 16M
+max_allowed_packet = 64M
+
+# Memory Table
+#max_heap_table_size = 64M
+
+# InnoDB Variables
+default_storage_engine = InnoDB
+innodb_file_per_table = 1  # store data & index in separate .ibd file,  not convert tables automatically, and ibdata1 will never shrink anyways
+innodb_strict_mode = 1    # ignore typos and syntax errors in SQL
+
+# innodb_buffer_pool_size = 8G  # set size to 75-80% of total memory if is a dedicated server
+# innodb_buffer_pool_instances = 8  # combine with innodb_buffer_pool_size,if its size < 1GB, the default value is 1, each buffer pool instance at least 1GB. In 5.6 set to 4; in 5.7, set to 8
+# innodb_buffer_pool_dump_at_shutdown = 1 # MySQL 5.6 or newer, for faster warm-up
+# innodb_buffer_pool_load_at_startup  = 1 # MySQL 5.6 or newer, for faster warm-up
+# innodb_buffer_pool_dump_pct = 50  # MySQL 5.7 only, percentage for each buffer pool to read out and dump
+
+# innodb_read_io_threads = 16    # if you have a strong I/O system or SSD
+# innodb_write_io_threads = 32    # if you have a strong I/O system or SSD
+# innodb_io_capacity = 1000    # if you have a strong I/O system or SSD, default is 200
+# innodb_io_capacity_max = 3000    # if you have a strong I/O system or SSD
+
+innodb_flush_method = O_DIRECT  # use O_DIRECT to avoid double-buffering
+innodb_flush_neighbors = 1  # set to 0 if have a strong I/O system or SSD
+innodb_flushing_avg_loops = 100
+innodb_flush_log_at_trx_commit = 0  # 1 for durability, 0 or 2 for performance, default is 1. If set 1 and enable binary logging, must set sync_binlog=1
+innodb_log_buffer_size = 16M
+# innodb_log_file_size = 256M
+
+innodb_thread_concurrency = 8  # default is 0, if concurrent user threads < 64, set to 0; if workload is consistently heavy or occasionally spikes, set to 128, then lowering the value until find the value for best performance
+innodb_stats_on_metadata = 0  # defaul is off
+# innodb_adaptive_hash_index_parts = 16      # MySQL 5.7 only
+# innodb_checksum_algorithm = crc32     # MySQL 5.6 or newer, hardware acceleratorion for checksums
+innodb_open_files = 3000  # specify max num of .idb files that MySQL can keep open at one time
+# innodb_page_cleaners = 8  # MySQL 5.7 only, number of page cleaner threads that flush dirty pages from buffer pool instances. ceilling num is equal to innodb_buffer_pool_instances
+innodb_old_blocks_time = 1000  # protects your buffer pool from occasional scans
+# InnoDB Variables End
+
+# General Query Log
+general_log_file = /var/log/mysqlvariant/mysqlvariant_general.log
+general_log = 1
+# General Query Log End
+
+# Slow Query Log
+slow_query_log = 1
+long_query_time = 1.5
+slow_query_log_file = /var/log/mysqlvariant/mysqlvariant_slow.log
+# log_queries_not_using_indexes=1
+# min_examined_row_limit = 100
+# Slow Query Log End
+
+# Error Log
+log_error = /var/log/mysqlvariant/mysqlvariant_error.log
+log_warnings = 2
+# log_error_verbosity = 3
+innodb_print_all_deadlocks = 1
+# Error Log End
+
+# Replication
+# server_id = 1
+# auto_increment_increment = 2     # For Master/Master set-ups use 2 for both nodes
+# auto_increment_offset = 1    # For Master/Master set-ups use 1 and 2
+# replicate-ignore-db = mysql,information_schema,performance_schema
+# Replication End
+
+# Binary Log
+# log_bin = mysqlvariant-bin
+# log_bin_index = mysqlvariant-bin.index       #The index file for binary log file names.
+# binlog_format=mixed
+# binlog_cache_size = 1M
+# binlog_stmt_cache_size = 1M
+# max_binlog_size = 64M
+# If innodb_flush_log_at_trx_commit is set to 1 and enable binary logging, sync_binlog must be set to 1
+# sync_binlog = 0
+# expire_logs_days = 15
+# binlog_row_image = full
+# Binary Log End
+
+# Relay Log
+# relay_log = mysqlvariant-relay-bin
+# relay_log_index = mysqlvariant-relay-bin.index   # The name of the relay log index file for the default replication channel. default format "*host_name*-relay-bin.index"
+# relay_log_info_repository = file
+# relay_log_info_file = mysqlvariant-relay-log.info
+# relay_log_purge = 1     #Disables or enables automatic purging of relay log files as soon as they are not needed any more. The default value is 1 (ON).
+# log_slave_updates = 1    # Use if Slave is used for Backup and PiTR
+# read_only = 0    # Set to 1 to prevent writes on Slave
+# skip_slave_start = 1    # To avoid start of Slave thread
+# Relay Log End

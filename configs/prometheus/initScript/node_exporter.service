@@ -1,0 +1,13 @@
+[Unit]
+Description=Prometheus Node Exporter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/opt/Prometheus/Exporter/node_exporter
+User=prometheus
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target
+Alias=node_exporter.service

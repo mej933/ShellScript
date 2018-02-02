@@ -1,0 +1,208 @@
+#! /usr/bin/env bash
+
+# chkconfig: 2345 80 20
+# description: Kibana is an open source analytics and visualization platform designed to work with Elasticsearch.
+# processname: kibana
+# config: /etc/elastic/kibana/kibana.yml
+# pidfile: /var/run/elastic/kibana.pid
+
+### Initialization Info Start
+# Creator:           MaxdSre
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start kibana daemon at boot time
+### Initialization Info End
+
+#  tested on
+#  1. New lsb that define start-stop-daemon
+#  3. Centos with initscripts package installed
+
+
+### Kibana Default Configuraton Start
+NAME=kibana
+STACK_NAME=elastic
+DESC='Kibana Daemon'
+USER=elastic
+GROUP=elastic
+HOME=/opt/${STACK_NAME}/kibana
+DAEMON=${HOME}/bin/${NAME}
+PATH_CONF=/etc/${STACK_NAME}/kibana
+SYS_CONFIG=/etc/sysconfig/${NAME}
+
+LOG_DIR=/var/log/${STACK_NAME}/kibana
+LOG_FILE=${LOG_DIR}/${NAME}_stdout.log
+LOG_FIEL_ERR==${LOG_DIR}/${NAME}_stderr.log
+PID_DIR=/var/run/${STACK_NAME}
+PID_FILE=${PID_DIR}/${NAME}.pid
+LOCK_FILE=/var/lock/subsys/${NAME}
+# DATA_DIR=/var/lib/${STACK_NAME}/${NAME}
+### Kibana Default Configuraton End
+
+# Check daemon if exists or executable
+if [ ! -x ${DAEMON} ]; then
+  echo "Program not installed or not executable"
+  exit 5
+fi
+
+# init.d / servicectl compatibility (openSUSE)
+# if [[ -f /etc/rc.status ]]; then
+#     . /etc/rc.status
+#     rc_reset
+# fi
+
+# Source function library. (status/pidofproc/...)
+# [[ -f /etc/rc.d/init.d/functions ]] && . /etc/rc.d/init.d/functions
+
+# Overwrite settings from default file
+[[ -e ${SYS_CONFIG} ]] && . ${SYS_CONFIG}
+
+[ -z "${nice}" ] && nice=0
+
+trace() {
+  logger -t "/etc/init.d/kibana" "$@"
+}
+
+emit() {
+  trace "$@"
+  echo "$@"
+}
+
+function check_is_root() {
+    if [[ $(id -u) -ne 0 ]]; then
+        echo "You need root privileges to run this script"
+        exit 4
+    fi
+}
+
+function perparation() {
+    # Ensure the log directory is setup correctly.
+    [[ -d "${LOG_DIR}" ]] || mkdir -p "${LOG_DIR}"
+    chown "${USER}":"${GROUP}" "${LOG_DIR}"
+    chown -R 755 "${LOG_DIR}"
+
+    # Setup any environmental stuff beforehand
+
+    # Ensure that the PID_DIR exists (it is cleaned at OS startup time)
+    [[ -d "${PID_DIR}" ]] || mkdir -p "${PID_DIR}"
+    # [[ -f "${PID_FILE}" ]] || touch "${PID_FILE}"
+    # chown -R "${USER}":"${GROUP}" "${PID_DIR}"
+}
+
+
+function start() {
+    check_is_root
+    perparation
+
+    args=-c\\\ "${PATH_CONF}/kibana.yml"
+    chroot --userspec "${USER}":"${GROUP}" "${chroot}" sh -c "
+      cd \"${chdir}\"
+      exec \"${DAEMON}\" $args
+    " >> "${LOG_FILE}" 2>> "${LOG_FIEL_ERR}"
+    echo $! > "${PID_FILE}"
+
+    # Generate the pidfile from here. If we instead made the forked process
+    # generate it there will be a race condition between the pidfile writing
+    # and a process possibly asking for status.
+    emit "${NAME} started"
+    return 0
+}
+
+function stop() {
+  # Try a few times to kill TERM the program
+  if status ; then
+    PID=$(cat "${PID_FILE}")
+    trace "Killing ${NAME} (pid ${PID}) with SIGTERM"
+    kill -TERM ${PID}
+    # Wait for it to exit.
+    for i in 1 2 3 4 5 ; do
+      trace "Waiting ${NAME} (pid ${PID}) to die..."
+      status || break
+      sleep 1
+    done
+    if status ; then
+      if [[ "${KILL_ON_STOP_TIMEOUT}" -eq 1 ]] ; then
+        trace "Timeout reached. Killing ${NAME} (pid ${PID}) with SIGKILL.  This may result in data loss."
+        kill -KILL ${PID}
+        emit "${NAME} killed with SIGKILL."
+      else
+        emit "${NAME} stop failed; still running."
+      fi
+    else
+      emit "${NAME} stopped."
+    fi
+  fi
+}
+
+function status() {
+  if [ -f "${PID_FILE}" ] ; then
+    PID=$(cat "${PID_FILE}")
+    if ps -p ${PID} > /dev/null 2> /dev/null ; then
+      # process by this pid is running.
+      # It may not be our pid, but that's what you get with just pidfiles.
+      # TODO(sissel): Check if this process seems to be the same as the one we
+      # expect. It'd be nice to use flock here, but flock uses fork, not exec,
+      # so it makes it quite awkward to use in this case.
+      return 0
+    else
+      return 2 # program is dead but pid file exists
+    fi
+  else
+    return 3 # program is not running
+  fi
+}
+
+force_stop() {
+  if status ; then
+    stop
+    status && kill -KILL $(cat "${PID_FILE}")
+  fi
+}
+
+
+case "$1" in
+  force-start|start|stop|force-stop|restart)
+    trace "Attempting '$1' on kibana"
+    ;;
+esac
+
+case "$1" in
+  force-start)
+    PRESTART=no
+    exec "$0" start
+    ;;
+  start)
+    status
+    code=$?
+    if [ $code -eq 0 ]; then
+      emit "${NAME} is already running"
+      exit $code
+    else
+      start
+      exit $?
+    fi
+    ;;
+  stop) stop ;;
+  force-stop) force_stop ;;
+  status)
+    status
+    code=$?
+    if [ $code -eq 0 ] ; then
+      emit "${NAME} is running"
+    else
+      emit "${NAME} is not running"
+    fi
+    exit $code
+    ;;
+  restart)
+
+    stop && start
+    ;;
+  *)
+    echo "Usage: $SCRIPTNAME {start|force-start|stop|force-start|force-stop|status|restart}" >&2
+    exit 3
+  ;;
+esac
+
+exit $?

@@ -1,0 +1,66 @@
+MySQL|artful|5.7 8.0|ubuntu
+MySQL|el5|5.7 5.6|rhel centos
+MySQL|el6|8.0 5.7 5.6 5.5|rhel centos
+MySQL|el7|8.0 5.7 5.6 5.5|rhel centos
+MySQL|fc25|8.0 5.7|fedora
+MySQL|fc26|8.0 5.7|fedora
+MySQL|fc27|8.0 5.7|fedora
+MySQL|jessie|5.6 5.7 8.0|debian
+MySQL|precise|5.6 5.7|ubuntu
+MySQL|sles11|5.7 5.6 5.5|sles
+MySQL|sles12|8.0 5.7 5.6|sles
+MySQL|stretch|5.6 5.7 8.0|debian
+MySQL|trusty|5.6 5.7 8.0|ubuntu
+MySQL|wheezy|5.6 5.7|debian
+MySQL|xenial|5.7 8.0|ubuntu
+MySQL|zesty|5.7 8.0|ubuntu
+MySQL NDB Cluster|el5|7.5|rhel centos
+MySQL NDB Cluster|el6|7.6 7.5|rhel centos
+MySQL NDB Cluster|el7|7.6 7.5|rhel centos
+MySQL NDB Cluster|jessie|7.5 7.6|debian
+MySQL NDB Cluster|sles12|7.6 7.5|sles
+MySQL NDB Cluster|stretch|7.5|debian
+MySQL NDB Cluster|trusty|7.5 7.6|ubuntu
+MySQL NDB Cluster|wheezy|7.5 7.6|debian
+MySQL NDB Cluster|xenial|7.5 7.6|ubuntu
+MySQL NDB Cluster|zesty|7.5|ubuntu
+MariaDB|zesty|10.3 10.2 10.1|ubuntu
+MariaDB|xenial|10.3 10.2 10.1 10.0|ubuntu
+MariaDB|wheezy|10.3 10.2 10.1 10.0 5.5|debian
+MariaDB|trusty|10.3 10.2 10.1 10.0 5.5|ubuntu
+MariaDB|stretch|10.3 10.2 10.1|debian
+MariaDB|sid|10.3 10.2 10.1|debian
+MariaDB|rhel7|10.3 10.2 10.1 10.0 5.5|rhel
+MariaDB|rhel6|10.3 10.2 10.1 10.0 5.5|rhel
+MariaDB|opensuse42|10.3 10.2 10.1|opensuse
+MariaDB|jessie|10.3 10.2 10.1 10.0|debian
+MariaDB|fedora26|10.3 10.2|fedora
+MariaDB|fedora25|10.3 10.2 10.1|fedora
+MariaDB|centos7|10.3 10.2 10.1 10.0 5.5|centos
+MariaDB|centos6|10.3 10.2 10.1 10.0 5.5|centos
+MariaDB|artful|10.3 10.2 10.1|ubuntu
+Percona Server|zesty|5.7 5.6 5.5|ubuntu
+Percona Server|xenial|5.7 5.6 5.5|ubuntu
+Percona Server|wheezy|5.7 5.6 5.5|debian
+Percona Server|trusty|5.7 5.6 5.5|ubuntu
+Percona Server|stretch|5.7 5.6 5.5|debian
+Percona Server|squeeze|5.1|debian
+Percona Server|rhel7|5.7 5.6 5.5|rhel centos
+Percona Server|rhel6|5.7 5.6 5.5 5.1|rhel centos
+Percona Server|rhel5|5.1|rhel centos
+Percona Server|precise|5.1|ubuntu
+Percona Server|lucid|5.1|ubuntu
+Percona Server|jessie|5.7 5.6 5.5|debian
+Percona Server|artful|5.7 5.6 5.5|ubuntu
+Percona XtraDB Cluster|zesty|5.7 5.6|ubuntu
+Percona XtraDB Cluster|yakkety|5.7|ubuntu
+Percona XtraDB Cluster|xenial|5.7 5.6|ubuntu
+Percona XtraDB Cluster|wheezy|5.7 5.6 5.5|debian
+Percona XtraDB Cluster|trusty|5.7 5.6 5.5|ubuntu
+Percona XtraDB Cluster|stretch|5.7 5.6|debian
+Percona XtraDB Cluster|rhel7|5.7 5.6 5.5|rhel centos
+Percona XtraDB Cluster|rhel6|5.7 5.6 5.5|rhel centos
+Percona XtraDB Cluster|rhel5|5.5|rhel centos
+Percona XtraDB Cluster|precise|5.5|ubuntu
+Percona XtraDB Cluster|jessie|5.7 5.6|debian
+Percona XtraDB Cluster|artful|5.6|ubuntu

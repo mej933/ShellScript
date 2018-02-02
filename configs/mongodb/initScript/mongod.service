@@ -1,0 +1,31 @@
+[Unit]
+Description=MongoDB Community Server
+After=network.target
+Documentation=https://docs.mongodb.org/manual
+
+[Service]
+User=mongodb
+Group=mongodb
+Restart=on-failure
+ExecStart=/opt/MongoDB/bin/mongod --config /etc/mongodb/mongod.conf --pidfilepath /var/run/mongodb/mongod.pid
+# file size
+LimitFSIZE=infinity
+# cpu time
+LimitCPU=infinity
+# virtual memory size
+LimitAS=infinity
+# open files
+LimitNOFILE=65535
+# processes/threads
+LimitNPROC=65535
+# locked memory
+LimitMEMLOCK=infinity
+# total threads (user+kernel)
+TasksMax=infinity
+TasksAccounting=false
+
+# Recommended limits for for mongod as specified in
+# http://docs.mongodb.org/manual/reference/ulimit/#recommended-settings
+
+[Install]
+WantedBy=multi-user.target

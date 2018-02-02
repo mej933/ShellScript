@@ -1,0 +1,16 @@
+[Unit]
+Description=Prometheus Server
+Documentation=https://prometheus.io/docs/introduction/overview/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/opt/Prometheus/Server/prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/opt/Prometheus/Server/Data
+Restart=on-failure
+StartLimitBurst=3
+StartLimitInterval=60s
+User=prometheus
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,64 @@
+# Custom Setting Start
+
+# - PS1 from Parrot OS https://www.parrotsec.org/
+PS1="\[\033[0;31m\]\342\224\214\342\224\200\$([[ \$? != 0 ]] && echo \"[\[\033[0;31m\]\342\234\227\[\033[0;37m\]]\342\224\200\")[$(if [[ ${EUID} == 0 ]]; then echo '\[\033[01;31m\]root\[\033[01;33m\]@\[\033[01;96m\]\h'; else echo '\[\033[0;39m\]\u\[\033[01;33m\]@\[\033[01;96m\]\h'; fi)\[\033[0;31m\]]\342\224\200[\[\033[0;32m\]\w\[\033[0;31m\]]\n\[\033[0;31m\]\342\224\224\342\224\200\342\224\200\342\225\274 \[\033[0m\]\[\e[01;33m\]\\$\[\e[0m\]"
+
+# - download command
+export curl_command='curl -fsSL --retry 5 --retry-delay 1 --connect-timeout 2 --no-keepalive'
+# - ip info detection
+alias axdsre_ipinner="ip route get 1 | sed -r -n '1{s@.*src[[:space:]]*([^[:space:]]+).*\$@\1@g;p}'"
+alias axdsre_ipexternreal='dig +short myip.opendns.com @resolver1.opendns.com'
+alias axdsre_ipextern="${curl_command} ipinfo.io/ip"
+# alias axdsre_ipextern="exec 3<> /dev/tcp/icanhazip.com/80;echo -e 'GET / HTTP/1.0\r\nHost: icanhazip.com\r\n\r' >&3;while read i; do [[ -n \$i ]] && item=\$i; done <&3;echo \$item; exec 3>&-"
+alias axdsre_ipexterninfo="${curl_command} ipinfo.io"
+# alias axdsre_ipexterninfo="exec 6<> /dev/tcp/ipinfo.io/80;echo -e 'GET / HTTP/1.0\r\nHost: ipinfo.io\r\n\r' >&6; cat 0<&6 | sed -r -n '/^\{/,/^\}/p'; exec 6>&-;"
+
+# - hosts update
+# https://coding.net/u/scaffrey/p/hosts/git/raw/master/hosts-files/hosts
+alias axdsre_hosts_update="sudo sed -i '/Modified Hosts Start/,/Modified Hosts End/d' /etc/hosts && ${curl_command} https://raw.githubusercontent.com/huanz/surge-hosts/master/hosts | sed -r -e '1i\# Modified Hosts Start' -e '/Copyright/,/Localhost.*End/d' | sudo tee -a /etc/hosts 1> /dev/null"
+
+# - proxy ip extraction & configuration
+alias axdsre_proxy_socks5="${curl_command} https://raw.githubusercontent.com/MaxdSre/ShellScript/master/assets/tool/proxyIPExtractation.sh | bash -s -- -s"
+alias axdsre_proxy_highanonymous="${curl_command} https://raw.githubusercontent.com/MaxdSre/ShellScript/master/assets/tool/proxyIPExtractation.sh | bash -s -- -t h -a h"
+alias axdsre_proxy_autochange="${curl_command} https://raw.githubusercontent.com/MaxdSre/ShellScript/master/assets/tool/networkProxyAutoConfiguration.sh | bash -s --"
+
+# - GNU/Linux Relevant
+# disk usage calculation
+alias axdsre_distro_disk_usage="df -Phl --total -x tmpfs -x devtmpfs | awk '{if(NR==1){title=\$0}else if(match(\$1,/^\//)){a[\$NF]=\$0}}END{PROCINFO[\"sorted_in\"]=\"@val_str_asc\";print title;for(i in a) print a[i];print}'"
+# distro releas version
+alias axdsre_distro_release_info="${curl_command} https://raw.githubusercontent.com/MaxdSre/ShellScript/master/assets/gnulinux/gnuLinuxDistroVersionDetection.sh | bash -s --"
+# distro life cycle
+alias axdsre_distro_life_cycle="${curl_command} https://raw.githubusercontent.com/MaxdSre/ShellScript/master/assets/gnulinux/gnuLinuxLifeCycleInfo.sh | bash -s --"
+# distro official documentations download
+alias axdsre_distro_official_docs="${curl_command} https://raw.githubusercontent.com/MaxdSre/ShellScript/master/assets/gnulinux/gnuLinuxOfficialDocumentationDownload.sh | bash -s --"
+# distro release package update
+# alias axdsre_distro_update="sudo apt-get -yq clean all; sudo apt-get -yq update; sudo apt-get -yq upgrade; sudo apt-get -yq dist-upgrade; sudo apt-get -yq autoremove"
+# alias axdsre_distro_update="sudo dnf -yq clean all; sudo dnf -yq makecache fast; sudo dnf -yq upgrade; sudo dnf -yq autoremove"
+# alias axdsre_distro_update="sudo yum -y -q clean all; sudo yum -y -q makecache fast; sudo yum -y -q update; sudo yum -y -q upgrade; sudo yum -y -q autoremove"
+# alias axdsre_distro_update="sudo zypper clean -a; sudo zypper ref -f; sudo zypper up -yl; sudo zypper dup -yl; sudo zypper patch -yl; zypper packages --unneeded | awk -F\| 'match(\$1,/^i/){print \$3}' | xargs sudo zypper rm -yu"
+# distro older version kernel remove
+# alias axdsre_distro_old_kernel="sudo package-cleanup --oldkernels --count=1 #yum"
+# alias axdsre_distro_old_kernel="sudo dnf remove \$(rpm -qa | awk -v verinfo=\$(uname -r) 'BEGIN{gsub(\".?el[0-9].*$\",\"\",verinfo)}match(\$0,/^kernel/){if(\$0!~verinfo) print \$0}' | sed '1d')"
+# alias axdsre_distro_old_kernel="sudo apt-get purge \$(dpkg -l | awk -v verinfo=\$(uname -r) 'match(\$0,/linux-image-/){if(\$2!~verinfo) print \$2}' | sed '1d')"
+# alias axdsre_distro_old_kernel="sudo zypper remove \$(zypper packages --installed-only | awk -F\| -v verinfo=\$(uname -r) 'BEGIN{OFS=\"-\"}match(\$1,/^i/)&&match(\$0,/kernel-default/){gsub(\"-default\",\"\",verinfo);gsub(\" \",\"\",\$0);if(\$4!~verinfo){print\$3,\$4}}')"
+
+# random tcp port generated
+alias axdsre_distro_port_random="${curl_command} https://raw.githubusercontent.com/MaxdSre/ShellScript/master/assets/gnulinux/gnuLinuxRandomUnusedPortGeneration.sh | bash -s --"
+# distro port being used
+alias axdsre_distro_port_info="${curl_command} https://raw.githubusercontent.com/MaxdSre/ShellScript/master/assets/gnulinux/gnuLinuxPortUsedInfoDetection.sh | sudo bash -s --"
+# downlowd single file from GitHub
+alias axdsre_github_download="${curl_command} https://raw.githubusercontent.com/MaxdSre/ShellScript/master/assets/tool/GitHubSingleFileDownload.sh | bash -s --"
+
+# - Python online version check
+alias axdsre_python_version="${curl_command} https://www.python.org/downloads/ | sed -r -n '/download-os-source/,/<\/div>/s@.*href=\"(.*)\">Download Python (.*)</a>@\2 \1@p' | while read -r version download_link;do ${curl_command} https://www.python.org/downloads/ | sed -r -n '/list-row-container/,/View older releases/{s@^[[:space:]]*@@g;s@</?(span|ol)[^>]*>@@g;p}' | awk '{if(\$0!~/<\/li>/){ORS=\"\";print \$0}else{printf \"\n\"}}' | sed -r -n '/'"\${version}"'/s@.*<a href=\"(.*)\">Python (.*)</a>(.*)<a href=\".*\"> Download</a><a href=\"(.*)\">.*@\2 \3 '"\${download_link}"' https://www.python.org\1 \4@p' | awk '{printf(\"Version \033[31;1m%s\033[0m\nRelease Date \033[31;1m%s\033[0m\nDownload Link \033[31;1m%s\033[0m\nDownload Page \033[31;1m%s\033[0m\nRelease Note \033[31;1m%s\033[0m\n\n\",\$1,\$2,\$3,\$4,\$5)}'; done"
+
+# - docker usage
+alias dockerimageupdate="sudo systemctl restart docker &> /dev/null && docker images | awk 'match(\$1,/[^(hexo|REPOSITORY)]/)&&match(\$2,/[^<none>]/){print \$1,\$2}' | while read -r name tag;do docker pull \$name:\$tag; done && docker images | awk 'match(\$2,/<none>/){print \$3}' | while read -r imageid;do docker rmi -f \$imageid; done"
+
+alias dockerpy3='docker run -ti --rm -h python3 --name python3 python:3'
+alias dockerpy2='docker run -ti --rm -h python2 --name python2 python:2'
+
+# - Remote X display setting
+# export DISPLAY=:0.0
+
+# Custom Setting End

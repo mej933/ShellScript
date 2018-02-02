@@ -1,0 +1,53 @@
+# ======================== Elasticsearch Configuration =========================
+# Please consult the documentation for further information on configuration options:
+# https://www.elastic.co/guide/en/elasticsearch/reference/index.html
+# https://www.elastic.co/guide/en/elasticsearch/reference/current/important-settings.html
+
+# Use a descriptive name for cluster & node
+
+# - Cluster Setting Start
+# Make sure that you don’t reuse the same cluster names in different environments, otherwise you might end up with nodes joining the wrong cluster.
+cluster.name: elastic-elk
+# Cluster Setting End
+
+# - Node Setting Start
+node.name: elasticsearch-node-1
+#node.attr.rack: r1
+# Node Setting End
+
+# - Network Setting Start
+network.host: 127.0.0.1
+http.port: 9200-9299
+transport.tcp.port: 9300-9399
+# Network Setting End
+
+# - Paths Setting Start
+# Path to directory where to store the data (separate multiple locations by comma):
+# path.data: /path/to/data
+# path.logs: /path/to/logs
+# Paths Setting End
+
+# - Memory Setting Start
+# It is vitally important to the health of your node that none of the JVM is ever swapped out to disk. Elasticsearch performs poorly when the system is swapping the memory. Make sure that the heap size is set to about half the memory available on the system and that the owner of the process is allowed to use this limit.
+# https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-configuration-memory.html
+bootstrap.memory_lock: true
+# Memory Setting End
+
+# - Discovery Setting Start
+# Pass an initial list of hosts to perform discovery when new node is started:
+# The default list of hosts is ["127.0.0.1", "[::1]"]
+#discovery.zen.ping.unicast.hosts: ["host1", "host2"]
+# Prevent the "split brain" by configuring the majority of nodes (total number of master-eligible nodes / 2 + 1):
+#discovery.zen.minimum_master_nodes: 2
+# Discovery Setting End
+
+# - Gateway Setting Start
+# Block initial recovery after a full cluster restart until N nodes are started:
+#
+#gateway.recover_after_nodes: 3
+# Gateway Setting End
+
+# - Various Setting Start
+# Require explicit names when deleting indices:
+#action.destructive_requires_name: true
+# Various Setting End

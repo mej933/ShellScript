@@ -1,0 +1,163 @@
+#! /usr/bin/env bash
+
+# chkconfig: 2345 80 20
+# description: Elasticsearch is a very scalable, schema-free and high-performance search solution supporting multi-tenancy and near realtime search.
+# processname: elasticsearch
+# config: /etc/elastic/elasticsearch/elasticsearch.yml
+# pidfile: /var/run/elastic/elasticsearch.pid
+
+### Initialization Info Start
+# Creator:           MaxdSre
+# Required-Start:    $network $named
+# Required-Stop:     $network $named
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start elasticsearch daemon at boot time
+### Initialization Info End
+
+#  tested on
+#  1. New lsb that define start-stop-daemon
+#  3. Centos with initscripts package installed
+
+### Elasticsearch Default Configuraton Start
+NAME=elasticsearch
+STACK_NAME=elastic
+DESC='Elasticsearch Server Daemon'
+USER=elastic
+GROUP=elastic
+ES_HOME=/opt/${STACK_NAME}/elasticsearch
+ES_CLASSPATH=${ES_HOME}/lib
+DAEMON=${ES_HOME}/bin/${NAME}
+ES_PATH_CONF=/etc/${STACK_NAME}/elasticsearch
+SYS_CONFIG=/etc/sysconfig/${NAME}
+
+# LOG_DIR=/var/log/${STACK_NAME}/elasticsearch
+# LOG_FILE=${LOG_DIR}/${NAME}.log
+PID_DIR=/var/run/${STACK_NAME}
+PID_FILE=${PID_DIR}/${NAME}.pid
+LOCK_FILE=/var/lock/subsys/${NAME}
+# DATA_DIR=/var/lib/${STACK_NAME}/${NAME}
+
+MAX_OPEN_FILES=65536
+MAX_MAP_COUNT=262144
+### Elasticsearch Default Configuraton End
+
+# Check daemon if exists or executable
+if [ ! -x ${DAEMON} ]; then
+  echo "Program not installed or not executable"
+  exit 5
+fi
+
+# ES_USER and ES_GROUP settings were removed
+if [[ -n "${ES_USER}" || -n "${ES_GROUP}" ]]; then
+    echo "ES_USER and ES_GROUP settings are no longer supported. To run as a custom user/group use the archive distribution of Elasticsearch."
+    exit 1
+fi
+
+# init.d / servicectl compatibility (openSUSE)
+if [[ -f /etc/rc.status ]]; then
+    . /etc/rc.status
+    rc_reset
+fi
+
+# Source function library. (status/pidofproc/...)
+[[ -f /etc/rc.d/init.d/functions ]] && . /etc/rc.d/init.d/functions
+
+# Overwrite settings from default file
+[[ -e ${SYS_CONFIG} ]] && . ${SYS_CONFIG}
+
+export ES_JAVA_OPTS
+export JAVA_HOME
+export ES_PATH_CONF
+export ES_STARTUP_SLEEP_TIME
+
+function check_status() {
+    status -p ${PID_FILE} ${NAME} > /dev/null 2>&1
+}
+
+function check_is_root() {
+    if [[ $(id -u) -ne 0 ]]; then
+        echo "You need root privileges to run this script"
+        exit 4
+    fi
+}
+
+function perparation() {
+    # check java
+    if [[ -x "${JAVA_HOME}/bin/java" ]]; then
+        JAVA="${JAVA_HOME}/bin/java"
+    else
+        JAVA=$(which java)
+    fi
+
+    if [[ ! -x "${JAVA}" ]]; then
+        echo "Could not find any executable java binary. Please install java in your PATH or set JAVA_HOME"
+        exit 1
+    fi
+
+    # initialization
+    [[ -n "${MAX_OPEN_FILES}" ]] && ulimit -n ${MAX_OPEN_FILES}
+    [[ -n "${MAX_LOCKED_MEMORY}" ]] && ulimit -l ${MAX_LOCKED_MEMORY}
+    [[ -n "${MAX_MAP_COUNT}" && -f /proc/sys/vm/max_map_count ]] && sysctl -q -w vm.max_map_count=${MAX_MAP_COUNT}
+
+    # Ensure that the PID_DIR exists (it is cleaned at OS startup time)
+    [[ -d "${PID_DIR}" ]] || mkdir -p "${PID_DIR}"
+    [[ -f "${PID_FILE}" ]] || touch "${PID_FILE}"
+    chown -R "${USER}":"${GROUP}" "${PID_DIR}"
+}
+
+function start() {
+    check_is_root
+    check_status
+    if [[ $? -eq 0 ]]; then
+      echo "${NAME} is already running."
+      exit 0
+    fi
+    perparation
+
+    cd "${ES_HOME}"
+    echo -n $"Starting ${NAME}: "
+    # if not running, start it up here, usually something like "daemon $exec"
+    daemon --user ${USER} --pidfile ${PID_FILE} ${DAEMON} -p ${PID_FILE} -d 2> /dev/null
+    retval=$?
+    echo
+    [[ ${retval} -eq 0 ]] && touch ${LOCK_FILE}
+    return ${retval}
+}
+
+function stop() {
+    check_is_root
+    echo -n $"Stopping ${NAME}: "
+    # stop it here, often "killproc $prog"
+    killproc -p ${PID_FILE} -d 86400 ${NAME}
+    retval=$?
+    echo
+    [[ ${retval} -eq 0 ]] && rm -f ${LOCK_FILE}
+    return ${retval}
+}
+
+case "$1" in
+    status )
+        status -p ${PID_FILE} ${NAME}
+        exit $?
+        ;;
+    start )
+        start
+        ;;
+    stop )
+        stop
+        ;;
+    restart|force-reload )
+        if [[ -f "${PID_FILE}" ]]; then
+            $0 stop
+            usleep 15000
+        fi
+        $0 start
+        ;;
+    * )
+        echo "Usage: $0 {start|stop|restart|force-reload|status}"
+        exit 3
+        ;;
+esac
+
+# Script End
