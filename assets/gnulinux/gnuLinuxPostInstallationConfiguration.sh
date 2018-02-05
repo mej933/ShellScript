@@ -94,6 +94,7 @@ administrator_utility=${administrator_utility:-0}
 security_enhance=${security_enhance:-0}
 remove_unneeded_pack=${remove_unneeded_pack:-0}
 cron_task=${cron_task:-0}
+kernel_upgrade=${kernel_upgrade:-0}
 selinux_setting=${selinux_setting:-0}
 boost_enable=${boost_enable:-0}
 proxy_server=${proxy_server:-}
@@ -674,6 +675,7 @@ This script requires superuser privileges (eg. root, su).
     -E    --install security relavant utilities, e.g. nikto, rkhunter, aide, clamav, [tripwire] ...
     -e    --remove unneeded utilities, e.g. game, media player, gnome utilities
     -c    --add cron task, e.g. system update, anti-virus sacn, intrusion detection scan
+    -K    --kernel upgrade, install latest mailline kernel version
     -Z selinux_type    --SELinux configuation(0/permissive, 1/enforcing, 2/disabled), default is 0/Permissive, not suggest deploy on Debian/Ubuntu, it may cause problems
     -p [protocol:]ip:port    --proxy host (http|https|socks4|socks5), default protocol is http
 ${c_normal}
@@ -681,7 +683,7 @@ EOF
 exit
 }
 
-while getopts "ru:SH:T:sdkRg:p:tlaEecZ:bh" option "$@"; do
+while getopts "ru:SH:T:sdkRg:p:tlaEecKZ:bh" option "$@"; do
     case "$option" in
         r ) change_repository=1 ;;
         u ) username_specify="$OPTARG" ;;
@@ -699,6 +701,7 @@ while getopts "ru:SH:T:sdkRg:p:tlaEecZ:bh" option "$@"; do
         E ) security_enhance=1 ;;
         e ) remove_unneeded_pack=1 ;;
         c ) cron_task=1 ;;
+        K ) kernel_upgrade=1 ;;
         Z ) selinux_setting="$OPTARG" ;;
         b ) boost_enable=1 ;;
         p ) proxy_server="$OPTARG" ;;
@@ -709,28 +712,31 @@ done
 
 #########  2-1. Package Repository Setting & System Update  #########
 funcRepositoryYUM(){
-    local repo_dir=${repo_dir:-'/etc/yum.repos.d/'}
+    local repo_dir=${repo_dir:-'/etc/yum.repos.d'}
     if [[ "${distro_name}" == 'centos' && "${ip_public_country_code^^}" == 'CN' ]]; then
         local repo_dir_backup="${repo_dir}${bak_suffix}"
         if [[ ! -d "${repo_dir_backup}" ]]; then
             mkdir -p "${repo_dir_backup}"
-            mv -f "${repo_dir}"CentOS*.repo "${repo_dir_backup}"
+            mv -f "${repo_dir}"/CentOS*.repo "${repo_dir_backup}"
         fi
 
         # http://mirrors.163.com/.help/centos.html
-        local repo_savename="${repo_dir}CentOS-Base.repo"
+        local repo_savename="${repo_dir}/CentOS-Base.repo"
         [[ -f "${repo_savename}" ]] || $download_tool "http://mirrors.163.com/.help/CentOS${version_id}-Base-163.repo" > "$repo_savename"
     fi
 
     # Installing EPEL Repository
-    if [[ ! -f "${repo_dir}epel.repo" ]]; then
+    if [[ ! -f "${repo_dir}/epel.repo" ]]; then
         local rpm_gpg_dir='/etc/pki/rpm-gpg/'
         [[ -f "${rpm_gpg_dir}RPM-GPG-KEY-EPEL-${version_id}" ]] || $download_tool "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-${version_id}" > "${rpm_gpg_dir}RPM-GPG-KEY-EPEL-${version_id}"
         funcPackageManagerOperation 'install' "epel-release"
         # https://support.rackspace.com/how-to/install-epel-and-additional-repositories-on-centos-and-red-hat/
-        [[ -f "${repo_dir}epel.repo" ]] || funcPackageManagerOperation 'install' "https://dl.fedoraproject.org/pub/epel/epel-release-latest-${version_id}.noarch.rpm"
-        [[ -f "${repo_dir}epel-testing.repo" ]] && rm -f "${repo_dir}epel-testing.repo"
+        [[ -f "${repo_dir}/epel.repo" ]] || funcPackageManagerOperation 'install' "https://dl.fedoraproject.org/pub/epel/epel-release-latest-${version_id}.noarch.rpm"
+        [[ -f "${repo_dir}/epel-testing.repo" ]] && rm -f "${repo_dir}/epel-testing.repo"
     fi
+
+    # Yum plugin which chooses fastest repository from a mirrorlist
+    [[ -z $(rpm -qa yum-plugin-fastestmirror 2> /dev/null) ]] && funcPackageManagerOperation 'install' 'yum-plugin-fastestmirror'
 }
 
 funcRepositoryDNF(){
@@ -810,8 +816,72 @@ funcRepositoryZYPPER(){
     fi
 }
 
+funcKernelUpgrade(){
+    case "${pack_manager}" in
+        apt-get )
+            case "${distro_name}" in
+                ubuntu )
+                    # linux-generic-hwe-16.04
+                    local l_hwe_name
+                    l_hwe_name=$(apt-cache search linux-generic-hwe 2> /dev/null | sed -r -n '1{s@^([^[:space:]]+).*$@\1@g;p}')
+                    [[ -n "${l_hwe_name}" ]] && funcPackageManagerOperation 'install' "${l_hwe_name}"
+                    ;;
+                debian )
+                    # http://jensd.be/818/linux/install-a-newer-kernel-in-debian-9-stretch-stable
+                    funcCommandExistCheck 'apt-get' && apt-get -t "${codename}"-backports -y -q upgrade 2> /dev/null
+                    ;;
+            esac
+            ;;
+        zypper )
+            # http://pvdm.xs4all.nl/wiki/index.php/How_to_have_the_latest_kernel_in_openSUSE
+            if [[ "${distro_name}" == 'opensuse' ]]; then
+                if [[ -s '/etc/zypp/zypp.conf' ]]; then
+                    # multiversion = provides:multiversion(kernel)
+                    # multiversion.kernels = latest,latest-1,running
+                    zypper ar -fcg http://download.opensuse.org/repositories/Kernel:/HEAD/standard/ kernel-repo &> /dev/null
+                    zypper dup -r kernel-repo &> /dev/null
+                fi
+            fi
+            ;;
+        yum )
+            # https://www.tecmint.com/install-upgrade-kernel-version-in-centos-7/
+            # ELRepo
+            if [[ ! -f '/etc/yum.repos./elrepo.repo' ]]; then
+                local elrepo_info
+                elrepo_info=$($download_tool https://elrepo.org/tiki/tiki-index.php | sed -r -n '/rpm (--import|-Uvh)/{s@<[^>]*>@@g;s@.*(http.*)$@\1@g;p}' | sed ':a;N;$!ba;s@\n@|@g;')
+                # https://www.elrepo.org/RPM-GPG-KEY-elrepo.org|http://www.elrepo.org/elrepo-release-7.0-3.el7.elrepo.noarch.rpm|http://www.elrepo.org/elrepo-release-6-8.el6.elrepo.noarch.rpm
+                rpm --import "${elrepo_info%%|*}" 2> /dev/null
+                elrepo_info="${elrepo_info#*|}"
+                case "${version_id}" in
+                    7 ) elrepo_info="${elrepo_info%%|*}" ;;
+                    6 ) elrepo_info="${elrepo_info##*|}" ;;
+                esac
+
+                funcPackageManagerOperation 'install' "${elrepo_info}"
+
+                # Long term support kernel package name is kernel-lt version
+                # Mainline stable kernel package name is kernel-ml version
+
+                # yum --disablerepo='*' --enablerepo='elrepo-kernel' list available
+                # yum --disablerepo='*' --enablerepo='elrepo-kernel' -y -q install kernel-lt
+                yum --disablerepo='*' --enablerepo='elrepo-kernel' -y -q install kernel-ml &> /dev/null
+
+                case "${version_id}" in
+                    7 )
+                        # egrep ^menuentry /etc/grub2.cfg | cut -f 2 -d \'
+                        funcCommandExistCheck 'grub2-set-default' && grub2-set-default 0 2> /dev/null
+                    ;;
+                    6 )
+                        [[ -s '/etc/grub.conf' ]] && sed -r -i '/default=/{s@^([^+]+=).*$@\10@g;}' /etc/grub.conf
+                    ;;
+                esac
+            fi
+            ;;
+    esac
+}
+
 funcPackRepositoryOperation(){
-    funcOperationPhaseStatement 'Package Management & System Update'
+    funcOperationPhaseStatement 'Package Management'
     # apt-get|yum|dnf|zypper
     local pack_func_name=${pack_manager%%-*}
     # Repository Setting
@@ -821,10 +891,18 @@ funcPackRepositoryOperation(){
         funcOperationProcedureResultStatement "${pack_func_name}"
     fi
 
+    # package update
     funcOperationProcedureStatement 'Packages update'
     funcPackageManagerOperation
     funcPackageManagerOperation "upgrade"
     funcOperationProcedureResultStatement
+
+    # install latest kernel
+    if [[ "${kernel_upgrade}" -eq 1 ]]; then
+        funcOperationProcedureStatement 'Kernel upgrade'
+        funcKernelUpgrade
+        funcOperationProcedureResultStatement
+    fi
 }
 
 
@@ -1877,12 +1955,66 @@ funcTmpfsSystemSetting(){
 
 
 #########  2-10. Security & Audit  #########
+funcKernelOptimization(){
+    local sysctl_config=${sysctl_config:-'/etc/sysctl.conf'}
+
+    # - Kernel parameters    /etc/sysctl.conf
+    # https://www.frozentux.net/ipsysctl-tutorial/
+    # https://www.kernel.org/doc/html/latest/admin-guide/sysrq.html
+    funcOperationProcedureStatement 'Kernel parameters'
+    # https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/security_guide/sec-securing_network_access
+    if [[ -f "${sysctl_config}" ]]; then
+        [[ -f "${sysctl_config}${bak_suffix}" ]] || cp -fp "${sysctl_config}" "${sysctl_config}${bak_suffix}"
+
+        if [[ -z $(sed -r -n '/Kernel Parameters Setting/p' "${sysctl_config}" 2> /dev/null) ]]; then
+            sed -i '/Kernel Parameters Setting Start/,/Kernel Parameters Setting End/d' "${sysctl_config}"
+            $download_tool "${sysctl_url}" >> "${sysctl_config}"
+            sed -r -i '/Parameters Setting Start/,/Parameters Setting End/{/^#[[:space:]]+/{/Parameters Setting/!d}}' "${sysctl_config}" 2> /dev/null
+        fi
+
+        # swappiness
+        # 16GB == 16 * 1024 * 1024 == 16777216 KB
+        [[ "${mem_totoal_size}" -le 16777216 ]] && sed -r -i '/^vm.swappiness/d' "${sysctl_config}"
+    fi
+    funcOperationProcedureResultStatement '/etc/sysctl.conf'
+
+
+    # - enable TCP BBR congestion control  >= 4.9
+    # https://cloudplatform.googleblog.com/2017/07/TCP-BBR-congestion-control-comes-to-GCP-your-Internet-just-got-faster.html
+
+    # egrep 'CONFIG_TCP_CONG_BBR|CONFIG_NET_SCH_FQ' /boot/config-$(uname -r)
+    # /etc/sysctl.conf
+    # net.core.default_qdisc=fq
+    # net.ipv4.tcp_congestion_control=bbr
+
+    if [[ -s '/etc/sysctl.conf' ]]; then
+        kernel_version=$(uname -r | sed -r -n 's@^([[:digit:]]+.[[:digit:]]+)..*$@\1@g;p')
+        kernel_major=${kernel_version%%.*}
+        kernel_minor=${kernel_version##*.}
+        enable_bbr=${enable_bbr:-0}
+        if [[ "${kernel_major}" -gt 4 ]]; then
+            enable_bbr=1
+        elif [[ "${kernel_major}" -eq 4 && "${kernel_minor}" -ge 9 ]]; then
+            enable_bbr=1
+        fi
+
+        sed -r -i '/(BBR Congestion|net.core.default_qdisc|net.ipv4.tcp_congestion_control)/d' /etc/sysctl.conf 2> /dev/null
+
+        if [[ "${enable_bbr}" -eq 1  ]]; then
+            sed -r -i '/Kernel Parameters Setting End/i # TCP BBR Congestion Control\nnet.core.default_qdisc=fq\nnet.ipv4.tcp_congestion_control=bbr' /etc/sysctl.conf 2> /dev/null
+        fi
+        sysctl --system &> /dev/null
+    fi
+
+}
+
 funcSystemHardeningOperation(){
     # Lynis is an open source security auditing tool.   https://cisofy.com/lynis/
 
     # https://highon.coffee/blog/security-harden-centos-7/
     # https://www.safecomputing.umich.edu/protect-the-u/protect-your-unit/hardening/secure-linux-unix-server
     # https://www.slideshare.net/brendangregg/how-netflix-tunes-ec2-instances-for-performance
+    # https://www.cyberciti.biz/tips/linux-security.html
 
     # /etc/fstab
     # mount -o defults,noatime,discard,nobarrier
@@ -1892,6 +2024,10 @@ funcSystemHardeningOperation(){
     [[ -z $(sed -r -n '/blacklist firewire_ohci/{p}' /etc/modprobe.d/blacklist.conf 2> /dev/null)  ]] && echo 'blacklist firewire_ohci' >> /etc/modprobe.d/blacklist.conf
     funcOperationProcedureResultStatement '/etc/modprobe.d/'
 
+    # - Disable thunderbolt
+    # funcOperationProcedureStatement 'Disable Intel thunderbolt interface'
+    # [[ -z $(sed -r -n '/blacklist thunderbolt/{p}' /etc/modprobe.d/blacklist.conf 2> /dev/null)  ]] && echo 'blacklist thunderbolt' >> /etc/modprobe.d/blacklist.conf
+    # funcOperationProcedureResultStatement '/etc/modprobe.d/'
 
     # - Disable USB storage devices
     funcOperationProcedureStatement 'Disable USB storage devices'
@@ -1961,26 +2097,6 @@ funcSystemHardeningOperation(){
         fi
     fi
     funcOperationProcedureResultStatement "${security_limit_config}"
-
-
-    # - Kernel parameters    /etc/sysctl.conf
-    # https://www.frozentux.net/ipsysctl-tutorial/
-    # https://www.kernel.org/doc/html/latest/admin-guide/sysrq.html
-    funcOperationProcedureStatement 'Kernel parameters'
-    local sysctl_config=${sysctl_config:-'/etc/sysctl.conf'}
-    # https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/security_guide/sec-securing_network_access
-    if [[ -f "${sysctl_config}" ]]; then
-        [[ -f "${sysctl_config}${bak_suffix}" ]] || cp -fp "${sysctl_config}" "${sysctl_config}${bak_suffix}"
-        sed -i '/Kernel Parameters Setting Start/,/Kernel Parameters Setting End/d' "${sysctl_config}"
-        $download_tool "${sysctl_url}" >> "${sysctl_config}"
-        sed -r -i '/Parameters Setting Start/,/Parameters Setting End/{/^#[[:space:]]+/{/Parameters Setting/!d}}' "${sysctl_config}" 2> /dev/null
-
-        # swappiness
-        # 16GB == 16 * 1024 * 1024 == 16777216 KB
-        [[ "${mem_totoal_size}" -le 16777216 ]] && sed -r -i '/^vm.swappiness/d' "${sysctl_config}"
-    fi
-    funcOperationProcedureResultStatement '/etc/sysctl.conf'
-
 
     # - Transparent Huge Pages (THP)
     # THP is a Linux memory management system that reduces the overhead of Translation Lookaside Buffer (TLB) lookups on machines with large amounts of memory by using larger memory pages. You should disable THP on Linux machines to ensure best performance. However it will turn on on system restart. In order to disable them on system startup, you need to add Unit file with script that will disable THP.
@@ -2655,6 +2771,7 @@ funcUnwantedServiceSetting(){
 }
 
 funcUnwantedServiceOperation(){
+     # chkconfig --list | grep '3:on'
     # systemctl list-unit-files --state=enabled
     # systemctl list-units --type service
     # systemd-cgtop
@@ -2708,6 +2825,9 @@ funcUnwantedServiceOperation(){
 }
 
 funcSecuritySummaryOperation(){
+    funcOperationPhaseStatement 'Kernel Optimization'
+    funcKernelOptimization
+
     funcOperationPhaseStatement 'System Hardening'
     funcSystemHardeningOperation
 
@@ -2804,7 +2924,7 @@ funcOperationTimeCost(){
             remove_old_kernel="${pack_manager} remove \$(rpm -qa | awk -v verinfo=\$(uname -r) 'BEGIN{gsub(\".?el[0-9].*$\",\"\",verinfo)}match(\$0,/^kernel/){if(\$0!~verinfo) print \$0}' | sed '1d')"
             ;;
         apt-get )
-            remove_old_kernel="${pack_manager} purge \$(dpkg -l | awk -v verinfo=\$(uname -r) 'match(\$0,/linux-image-/){if(\$2!~verinfo) print \$2}' | sed '1d')"
+            remove_old_kernel="${pack_manager} purge \$(dpkg -l | awk -v verinfo=\$(uname -r) 'match(\$0,/linux-image-/){if(\$0!~/-hwe/&&\$2!~verinfo) print \$2}' | sed '1d')"
             ;;
         zypper )
             [[ $(rpm -qa | grep -c ^kernel-default) -gt 1 ]] && remove_old_kernel="${pack_manager} remove \$(zypper packages --installed-only | awk -F\| -v verinfo=\$(uname -r) 'BEGIN{OFS=\"-\"}match(\$1,/^i/)&&match(\$0,/kernel-default/){gsub(\"-default\",\"\",verinfo);gsub(\" \",\"\",\$0);if(\$4!~verinfo){print\$3,\$4}}')"
@@ -2868,6 +2988,7 @@ funcTrapEXIT(){
     unset security_enhance
     unset remove_unneeded_pack
     unset cron_task
+    unset kernel_upgrade
     unset proxy_server
     unset flag
     unset procedure_start_time

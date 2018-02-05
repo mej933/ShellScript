@@ -39,7 +39,7 @@ alias axdsre_distro_official_docs="${curl_command} https://raw.githubusercontent
 # distro older version kernel remove
 # alias axdsre_distro_old_kernel="sudo package-cleanup --oldkernels --count=1 #yum"
 # alias axdsre_distro_old_kernel="sudo dnf remove \$(rpm -qa | awk -v verinfo=\$(uname -r) 'BEGIN{gsub(\".?el[0-9].*$\",\"\",verinfo)}match(\$0,/^kernel/){if(\$0!~verinfo) print \$0}' | sed '1d')"
-# alias axdsre_distro_old_kernel="sudo apt-get purge \$(dpkg -l | awk -v verinfo=\$(uname -r) 'match(\$0,/linux-image-/){if(\$2!~verinfo) print \$2}' | sed '1d')"
+# alias axdsre_distro_old_kernel="sudo apt-get purge \$(dpkg -l | awk -v verinfo=\$(uname -r) 'match(\$0,/linux-image-/){if(\$0!~/-hwe/&&\$2!~verinfo) print \$2}' | sed '1d')"
 # alias axdsre_distro_old_kernel="sudo zypper remove \$(zypper packages --installed-only | awk -F\| -v verinfo=\$(uname -r) 'BEGIN{OFS=\"-\"}match(\$1,/^i/)&&match(\$0,/kernel-default/){gsub(\"-default\",\"\",verinfo);gsub(\" \",\"\",\$0);if(\$4!~verinfo){print\$3,\$4}}')"
 
 # random tcp port generated
